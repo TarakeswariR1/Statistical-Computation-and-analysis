@@ -1,0 +1,206 @@
+---
+title: "Assignment 3"
+author: "Tarakeswari Ramachandra"
+date: "18/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Problem 1
+
+Problem:1.1. Use Monte Carlo Methods (at least 5000 replicates) to estimate power curves (power versus sample size, N=30,50,100,200,500,1000,3000) by effect size (b2=0,0.2, 0.3 and 0.5 ).
+
+```{r}
+N=c(30,50,100,200,500,1000,3000)
+b=c(0,0.2, 0.3, 0.5)
+nRep=5000
+PAR=expand.grid(N=N,b=b)
+ PAR$rejRate=NA
+for(s in 1:nrow(PAR)){
+  n=PAR$N[s]
+  b2=PAR$b[s]
+  rejects=rep(NA,nRep)
+  a=n/2
+  for(i in 1:nRep){
+    
+    # Simulate data using the parameters for the s-scenario
+    # Apply the decision rule
+    mu=120
+    b1=-3
+    BMI_F=data.frame("BMI"=rnorm(a,mean=26.5,sd=sqrt(30)))
+    BMI_M=data.frame("BMI"=rnorm(a,mean=27.4,sd=sqrt(16.7)))
+    BMI_F$sex[1:a]=0
+    BMI_M$sex[1:a]=1
+    BMI=rbind(BMI_M, BMI_F)
+    BMI=scale(BMI,center=TRUE,scale=FALSE)
+    error=rnorm(n,mean=0, sd=sqrt(300))
+    SBP=120+BMI[,2] * (-3) + (BMI[,1]-mean(BMI[,1]))* b2 + error
+    fm=lm(SBP~BMI[,1]+BMI[,2])
+    pVal=summary(fm)$coef[2,4]
+    rejects[i]=pVal<0.05
+  }
+  
+  # Estimate rejection rate
+  PAR$rejRate[s]=mean(rejects)
+  
+}
+
+plot(PAR$N, PAR$rejRate ,type="b", xlab="Sample size", ylab="Power", main="Power curve")
+ 
+```
+
+Problem 1.2. What is the minimum sample size needed to achieve a power of at least 80% if the effect size is 0.3?
+
+```{r}
+nRep=5000
+N_min=1140
+a2=N_min/2
+b2=0.3
+rejects2=rep(NA, nRep)
+for(i in 1:nRep){
+  
+  # Simulate data using the parameters for the s-scenario
+  # Apply the decision rule
+  mu=120
+  b1=-3
+  BMI_F=data.frame("BMI"=rnorm(a2,mean=26.5,sd=sqrt(30)))
+  BMI_M=data.frame("BMI"=rnorm(a2,mean=27.4,sd=sqrt(16.7)))
+  BMI_F$sex[1:a2]=0
+  BMI_M$sex[1:a2]=1
+  BMI=rbind(BMI_M, BMI_F)
+  BMI=scale(BMI,center=TRUE,scale=FALSE)
+  error=rnorm(N_min,mean=0, sd=sqrt(300))
+  SBP=120+BMI[,2] * (-3) + (BMI[,1]-mean(BMI[,1]))* b2 + error
+  fm=lm(SBP~BMI[,1]+BMI[,2])
+  pVal=summary(fm)$coef[2,4]
+  rejects2[i]=pVal<0.05
+}
+Power_min=mean(rejects2)
+Power_min
+```
+
+
+Problem 2
+
+
+Assume that the effect of BMI on SBP is higher (0.4) in male than in female (0.2). Develop a MC study to estimate the power to detect this interaction as a function of sample size (go up to N=10,000). Suggestion: extend the baseline model by adding a sex by BMI interaction and assess the power to detect an interaction of the size above-specified.
+
+Q: Can a power of at least 50% be achieved with a sample size <= 10,000?
+
+When the sample size N was set to 10,000 I got a power of 0.7693. With this observation, I tried with N values less than 10,000 and at N=6000 I found the power to be 0.5451667. So a power of at least 50% can be achieved when sample size is at 5500. 
+
+```{r}
+nRep1=5000
+N=c(5200, 5300, 5000, 5500)
+power=rep(NA, length(N))
+for(s in 1:length(N)){
+  Ni=N[s]
+  a1=Ni/2
+  rejects=rep(NA, nRep1)
+for(i in 1:nRep1){
+  
+  # Simulate data using the parameters for the s-scenario
+  # Apply the decision rule
+  mu=120
+  b1=-3
+  BMI_F=data.frame("BMI"=rnorm(a1,mean=26.5,sd=sqrt(30)))
+  BMI_M=data.frame("BMI"=rnorm(a1,mean=27.4,sd=sqrt(16.7)))
+  BMI_F$sex[1:a1]=0
+  BMI_M$sex[1:a1]=1
+  BMI=rbind(BMI_M, BMI_F)
+  error=rnorm(a1,mean=0, sd=sqrt(300))
+  SBP_M=120+BMI_M[,2] * (-3) +( (BMI_M[,1]-mean(BMI_M[,1]))* (0.4) )+ error
+  SBP_F=120+BMI_F[,2] * (-3) + ((BMI_F[,1]-mean(BMI_F[,1]))* (0.2) )+ error
+  SBP=append(SBP_M, SBP_F)
+  BMI[,1]=scale(BMI[,1],center=TRUE,scale=FALSE)
+  names(BMI)=c("BMI", "SEX")
+  fm=lm(SBP ~ BMI[,1] + BMI[,2] + (BMI[,1] * BMI[,2]))
+  pVal=summary(fm)$coef[4,4]
+  rejects[i]=pVal<0.05
+}
+   power[s]=mean(rejects)
+}
+
+ power
+
+```
+
+
+Problem 3
+
+In the below code I have implemented one sided test using z-statistics and P-value and obtained the respective values.
+
+
+```{r}
+options(warn=-1)
+N=c(19000,19500,20000)
+nReps=500
+final=rep(NA, length(N))
+for(i in 1:length(N)){
+  Powers=rep(NA, nReps)
+  Ni=N[i]
+  for(j in 1:nReps){
+    N0=0.4*Ni
+    N1=0.6 * Ni
+    V=rep(1, N1)
+    UV=rep(0, N0)
+    Vax=data.frame(append(V, UV))
+    names(Vax)=c("X")
+    y_1=rbinom(n=N1, size=1, prob = (0.3/500))
+    y_0= rbinom(n=N0, size=1, prob = (1/500))
+    y=append(y_1, y_0)
+    fm=glm(y~Vax$X, family="binomial")
+    pVal=summary(fm)$coef[2,4]
+    Powers[j]=pVal/2 < 0.025
+   
+  }
+  final[i]=mean(Powers)
+  
+}
+final
+N
+
+```
+
+
+```{r}
+options(warn=-1)
+N=c(5800,5900,6000,6200)
+nReps=500
+final=rep(NA, length(N))
+for(i in 1:length(N)){
+  Powers=rep(NA, nReps)
+  Ni=N[i]
+  for(j in 1:nReps){
+    N0=0.4*Ni
+    N1=0.6 * Ni
+    V=rep(1, N1)
+    UV=rep(0, N0)
+    Vax=data.frame(append(V, UV))
+    names(Vax)=c("X")
+    y_1=rbinom(n=N1, size=1, prob = (0.3/500))
+    y_0= rbinom(n=N0, size=1, prob = (1/500))
+    y=append(y_1, y_0)
+    fm=glm(y~Vax$X, family="binomial")
+    z=summary(fm)$coef[2,3]
+    Powers[j]=z > -1.96
+   
+  }
+  final[i]=mean(Powers)
+  
+}
+final
+N
+```
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,108 @@
+---
+title: "Assignment 4"
+author: "Tarakeswari Ramachandra"
+date: "30/11/2021"
+output: html_document
+---
+Question 1
+
+
+
+1 Identify all the SNPs with 'significant' associations using Bonferroni, Holm, and the Benjamini-Hochberg (BH) methods to adjust for multiple testing. Conduct inferences at 0.05 significance level (for Bonferroni's and Holm's method) and 0.05 false discovery rate for the BH method.
+
+
+Report the SNPs (column numbers) that were 'significant' according to each method.
+
+
+
+```{r}
+load("/Users/tarakeswariramachandra/Downloads/Xy.RData")
+
+n=nrow(X)
+m=ncol(X)
+
+Pvalue=rep(NA, m)
+P.ADJ=Pvalue
+P.ADJ.hol=Pvalue
+P.ADJ.fdr=Pvalue
+for(i in 1:m){
+  fm=lm(y~X[,i])
+  Pvalue[i]=summary(fm)$coef[2,4]
+  
+  
+
+}
+P.ADJ=p.adjust(Pvalue, method="bonferroni")
+P.ADJ.hol=p.adjust(Pvalue, method="holm")
+P.ADJ.fdr=p.adjust(Pvalue, method="fdr")
+P_bon=data.frame(P.ADJ)
+P_hol=data.frame(P.ADJ.hol)
+P_fdr=data.frame(P.ADJ.fdr)
+reject1=P_bon<0.05
+reject2=P_hol<0.05
+reject3=P_fdr<0.05
+
+W=which(reject1==TRUE)
+W=data.frame(W)
+
+W1=which(reject2==TRUE)
+W1=data.frame(W1)
+
+W2=which(reject3==TRUE)
+W2=data.frame(W2)
+
+print("SNP significant through Bonferroni method")
+W
+print("SNP significant through Holm method")
+W1
+print("SNP significant through BH method")
+W2
+```
+
+
+Question 2 : Produce the following plot (using un-adjusted p-values)
+
+Manhattan plot (-log10(pvalue) in the y-axis versus position of the SNP (1:ncol(X)) in the horizontal axis)
+
+A a histogram of p-values with 500 bins hist(pvalues,500)
+
+A qqplot(), i.e., a scatterplot with the empirical quantiles of your p-values in the vertical axis versus the quantiles of the uniform distribution (i.e., the expected distribution under the null) in the x-axis. Display both axis in the -log10 scale. Add a 45-degree line.
+
+At what value of -log10(pvalue) do you see clear departure from the null distribution?
+
+
+From the QQ-plot we can see at -log10(Pvalue) between 4 and 5 points departs from normality or the 45 degree line and around the value greater than 5 it departs clearly . Since we are taking -log10 large value of (-log10) corresponds to smaller P-value. 
+
+```{r}
+
+par(mfrow=c(2,2))
+
+hist(Pvalue, 500)
+
+b=1:m
+plot(y=-log10(Pvalue), b, xlab = "SNP", ylab = "-log10(Pvalue)", main = "Manhattan plot")
+abline(h=-log10(max(Pvalue[P.ADJ.fdr<0.05])), lty=2)
+prob=seq(from=0,to=1,by=(1/length(Pvalue)))
+empQualtile=quantile(Pvalue,prob)
+plot(-log10(empQualtile), x= -log10(prob), cex=0.5, col=4)
+abline(a=0, b=1, col=2)
+abline(h=-log10(max(Pvalue[P.ADJ.fdr<0.05])), lty=2)
+
+
+#QQplot can also be produce using the cmd qqnorm
+
+qqnorm(-log10(Pvalue))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
